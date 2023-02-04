@@ -6,9 +6,9 @@ highly likely to be specific to the problem at hand.
 """
 
 import cv2
+import shutil
 import os
 import argparse
-import zipfile
 
 parser = argparse.ArgumentParser()
 # Required arguments
@@ -70,8 +70,11 @@ def partition_image(image_path, dest_dir, width_cutoff, height_cutoff):
                 if args.v: print(f"Writing file {fn}")
                 cv2.imwrite(fn, image)
             else:
-                print("File exists and overwrite is disabled. Exiting.")
-                exit()
+                print("File exists and overwrite is disabled. Skipping")
+                return
+
+    # Make a ZIP archive
+    if args.c: shutil.make_archive(dest_dir, "zip", dest_dir)
 
 # This part of the code is specific to the structure of this project.
 # Focused on a specimen numbering pattern with leading digits up to 9999.
@@ -100,8 +103,10 @@ def partition_directory(source_dir, dest_dir, width_cutoff, height_cutoff):
             if args.v: print(f"Partitioning sub-directory {directory}")
             dir_split = directory.split('/')
             dest = dest_dir + '/' + dir_split[2]
-            print(dest)
             partition_directory(directory, dest, args.s, args.s)
+
+            # Make a ZIP archive if that option is selected
+            if args.c: shutil.make_archive(dest, "zip", dest)
     else:
         print("Ignoring sub-directory {directory}")
 
