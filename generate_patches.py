@@ -8,6 +8,7 @@ highly likely to be specific to the problem at hand.
 import cv2
 import os
 import argparse
+import zipfile
 
 parser = argparse.ArgumentParser()
 # Required arguments
@@ -15,6 +16,7 @@ parser.add_argument("--src", required=True, help="Source file or directory")
 parser.add_argument("--dest", required=True, help="Destination directory")
 
 # Optional arguments
+parser.add_argument("-c", action="store_true", help="Compress the output directory")
 parser.add_argument("-o", action="store_true", help="Overwrite existing files")
 parser.add_argument("-r", action="store_true", help="Recursively partition directories")
 parser.add_argument("-s", type=int, default=250,
@@ -78,10 +80,7 @@ def partition_directory(source_dir, dest_dir, width_cutoff, height_cutoff):
 
     # Supply full paths for images for easy operation
     paths = [source_dir + '/' + i for i in paths]
-    print(paths)
     paths.sort()
-    print(paths)
-    exit()
 
     # Separate sub-directories from images
     images = []
