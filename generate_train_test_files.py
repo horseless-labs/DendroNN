@@ -59,12 +59,19 @@ df["specimen"] = [i.split('/')[2] for i in df['path']]
 df["specimen"] = df["specimen"].str.lstrip('0')
 df[level] = [specimen_to_index[int(df.iloc[i].specimen)] for i in range(len(df))]
 print(df.head())
-exit()
 
 members = set(specimen_to_index.values())
 print(members)
 
-def make_selection(df, mode, members):
+# Returns all members of the dataset on either side of a confidence threshold.
+# df here is a pandas DataFrame
+def confidence_threshold(df, thresh=args.c, below=args.b):
+    if below == True:
+        return df[df['confidence'] < thresh]
+    else:
+        return df[df['confidence'] >= thresh]
+
+def make_selection(df, mode, members, frac=args.c):
     members = sorted(list(members))
     text = ""
     for i in range(len(members)):
@@ -88,25 +95,13 @@ def make_selection(df, mode, members):
         selection = [int(i) for i in selection]
         for i in selection:
             print(f"Keeping {members[i]}")
-            dfs.append(df[df[level] == members[i]])
+            ueg_member = df[df[level] == members[i]]
+            ueg_member = confidence_threshold(ueg_member)
+            dfs.append(ueg_member)
 
         print(dfs)
 
     if mode == "all":
         print("All members selected")
 
-make_selection(accept_df, "selection", members)
-
-# Returns all members of the dataset on either side of a confidence threshold.
-# df here is a pandas DataFrame
-def confidence_threshold(df, thresh=args.c, below=args.b):
-    if below == True:
-        return df[df['confidence'] < thresh]
-    else:
-        return df[df['confidence'] >= thresh]
-
-def image_reshape(image):
-    image = Image.open(image).convert('RGB')
-    image = image.resize((224, 224))
-    image = np.asarray(image)
-    return image
+make_selection(df, "selection", members)
