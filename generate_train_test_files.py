@@ -16,6 +16,7 @@ import os
 import argparse
 
 parser = argparse.ArgumentParser()
+parser.add_argument('-a', default="torso_accept.csv", help="CSV file of accepted bark patches")
 parser.add_argument('-b', default=False, help="Above threshold? Default False.")
 parser.add_argument('-c', default=0.99, help="Threshold of confidence, default of 99% (0.99)")
 parser.add_argument('-l', default=0, help="Level of organization to return (0 for species, 1 for family ")
@@ -27,10 +28,19 @@ args = parser.parse_args()
 specimen_df = pd.read_csv(args.s)
 if args.v: print(specimen_df)
 
-level = {0: 'common_name',
-         1: 'family'}
+# Select the level of organization
+level = {0: "common_name",
+         1: "family"}
 
 level = level[int(args.l)]
+
+# Open the file of accepted bark patches
+accept_fn = args.a
+accept_df = pd.read_csv(accept_fn, index_col=0)
+if "path" and "confidence" not in accept_df.columns:
+    print(f"Column names in {accept_fn} do not match requirements to generate training")
+    print("and test files. Need 'path' and 'confidence' columns. Did you load the wrong one?")
+    exit()
 
 # Create a dictionary with integer IDs and specimen type. Ex:
 # {1: 'norway_maple'}
@@ -42,6 +52,14 @@ specimen_to_index = dict_df.to_dict()[level]
 if args.v:
     for i in specimen_to_index:
         print(i, specimen_to_index[i])
+
+# Extract the specimen name, remove leading zeros, and add the level
+df = accept_df.copy()
+df["specimen"] = [i.split('/')[2] for i in df['path']]
+df["specimen"] = df["specimen"].str.lstrip('0')
+df[level] = [specimen_to_index[int(df.iloc[i].specimen)] for i in range(len(df))]
+print(df.head())
+exit()
 
 members = set(specimen_to_index.values())
 print(members)
@@ -57,6 +75,7 @@ def make_selection(df, mode, members):
         print(text)
         selection = input("Enter the number to single out: ")
         print(f"Singling out {members[int(selection)]}")
+
     # Of the type "maple, beech, elm, and ..."
     if mode == "selection":
         print(text)
@@ -68,13 +87,15 @@ def make_selection(df, mode, members):
         selection = selection.split(', ')
         selection = [int(i) for i in selection]
         for i in selection:
-            dfs.append(df[df[level] == members[i]])
             print(f"Keeping {members[i]}")
+            dfs.append(df[df[level] == members[i]])
+
+        print(dfs)
 
     if mode == "all":
         print("All members selected")
 
-make_selection("selection", members)
+make_selection(accept_df, "selection", members)
 
 # Returns all members of the dataset on either side of a confidence threshold.
 # df here is a pandas DataFrame
