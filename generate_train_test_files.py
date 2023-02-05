@@ -43,6 +43,39 @@ if args.v:
     for i in specimen_to_index:
         print(i, specimen_to_index[i])
 
+members = set(specimen_to_index.values())
+print(members)
+
+def make_selection(df, mode, members):
+    members = sorted(list(members))
+    text = ""
+    for i in range(len(members)):
+        text += f"{i}: {members[i]}\n"
+
+    # Of the type "maple or not"
+    if mode == "one_in_all":
+        print(text)
+        selection = input("Enter the number to single out: ")
+        print(f"Singling out {members[int(selection)]}")
+    # Of the type "maple, beech, elm, and ..."
+    if mode == "selection":
+        print(text)
+        print("Enter the selection you want to keep, separated by commas.")
+        selection = input("e.g 14, 9, 17\n ")
+
+        dfs = []
+
+        selection = selection.split(', ')
+        selection = [int(i) for i in selection]
+        for i in selection:
+            dfs.append(df[df[level] == members[i]])
+            print(f"Keeping {members[i]}")
+
+    if mode == "all":
+        print("All members selected")
+
+make_selection("selection", members)
+
 # Returns all members of the dataset on either side of a confidence threshold.
 # df here is a pandas DataFrame
 def confidence_threshold(df, thresh=args.c, below=args.b):
