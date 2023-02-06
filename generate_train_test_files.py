@@ -124,6 +124,16 @@ def one_in_all_mode(df, members, conf=args.c):
     focus = confidence_threshold(focus)
     ignore = confidence_threshold(ignore)
 
+    # Hack to output balanced datasets
+    # This is needed because we are currently evaluating the model on accuracy, but there are other
+    # metrics to use for imbalanced datasets.
+    # Sticking with this now due to uncertainty as to how false positives and false negatives
+    # should be penalized, time constraints, etc.
+    # TODO: put more thought into metrics
+    ignore = ignore.sample(n=len(focus))
+    print(len(focus))
+    print(len(ignore))
+
     name_rec_base = f"{members[int(selection)]}_in_all-{args.c}_conf"
 
     # Prepare a single merged DataFrame that will be split into train and test sets
