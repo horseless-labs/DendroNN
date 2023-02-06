@@ -20,6 +20,7 @@ parser.add_argument('-a', default="torso_accept.csv", help="CSV file of accepted
 parser.add_argument('-b', default=False, help="Above threshold? Default False.")
 parser.add_argument('-c', default=0.99, help="Threshold of confidence, default of 99% (0.99)")
 parser.add_argument('-l', default=0, help="Level of organization to return (0 for species, 1 for family ")
+parser.add_argument('-m', default=0, help="Selection mode. 0 for one-in-all (e.g. binary), 1 for arbitrary selection, 2 for all (just returns on confidence threshold")
 parser.add_argument('-s', default="specimen_list.csv", help="CSV file connecting specimen ID numbers to identifying information")
 parser.add_argument('-v', action="store_true", help="Verbose")
 args = parser.parse_args()
@@ -31,8 +32,13 @@ if args.v: print(specimen_df)
 # Select the level of organization
 level = {0: "common_name",
          1: "family"}
-
 level = level[int(args.l)]
+
+# Select the selection mode
+mode = {0: "one_in_all",
+        1: "arbitrary",
+        2: "all"}
+mode = mode[int(args.m)]
 
 # Open the file of accepted bark patches
 accept_fn = args.a
@@ -58,10 +64,10 @@ df = accept_df.copy()
 df["specimen"] = [i.split('/')[2] for i in df['path']]
 df["specimen"] = df["specimen"].str.lstrip('0')
 df[level] = [specimen_to_index[int(df.iloc[i].specimen)] for i in range(len(df))]
-print(df.head())
+if args.v: print(df.head())
 
 members = set(specimen_to_index.values())
-print(members)
+if args.v: print(members)
 
 # Returns all members of the dataset on either side of a confidence threshold.
 # df here is a pandas DataFrame
@@ -71,47 +77,56 @@ def confidence_threshold(df, thresh=args.c, below=args.b):
     else:
         return df[df['confidence'] >= thresh]
 
-def make_selection(df, mode, members, conf=args.c):
+# Helpfer function to sort the list of members and generate a selection menu.
+def members_text(members):
     members = sorted(list(members))
     text = ""
     for i in range(len(members)):
         text += f"{i}: {members[i]}\n"
+    return members, text
 
-    # Of the type "maple or not"
-    if mode == "one_in_all":
-        print(text)
-        selection = input("Enter the number of the member to single out: ")
-        print(f"Singling out {members[int(selection)]}")
+def one_in_all_mode(df, members, conf=args.c):
+    members, text = members_text(members)
+    print(text)
+    selection = input("Enter the number of the member to single out: ")
+    print(f"Singling out {members[int(selection)]}")
 
-        focus = df[df[level] == members[int(selection)]]
-        ignore = df[df[level] != members[int(selection)]]
+    focus = df[df[level] == members[int(selection)]]
+    ignore = df[df[level] != members[int(selection)]]
 
-        focus = confidence_threshold(focus)
-        ignore = confidence_threshold(ignore)
-        return focus, ignore
+    focus = confidence_threshold(focus)
+    ignore = confidence_threshold(ignore)
+    return focus, ignore
 
-    # Of the type "maple, beech, elm, and ..."
-    if mode == "selection":
-        print(text)
-        print("Enter the selection you want to keep, separated by commas.")
-        selection = input("e.g 14, 9, 17\n ")
+def arbitrary_mode(df, members, conf=args.c):
+    members, text = members_text(members)
+    print(text)
+    print("Enter the selection you want to keep, separated by commas.")
+    selection = input("e.g 14, 9, 17\n ")
 
-        dfs = []
+    dfs = []
 
-        selection = selection.split(', ')
-        selection = [int(i) for i in selection]
-        for i in selection:
-            print(f"Keeping {members[i]}")
-            ueg_member = df[df[level] == members[i]]
-            ueg_member = confidence_threshold(ueg_member)
-            dfs.append(ueg_member)
+    selection = selection.split(', ')
+    selection = [int(i) for i in selection]
+    for i in selection:
+        print(f"Keeping {members[i]}")
+        ueg_member = df[df[level] == members[i]]
+        ueg_member = confidence_threshold(ueg_member)
+        dfs.append(ueg_member)
 
-        return dfs
+    return dfs
 
-    if mode == "all":
-        print("All members selected")
+def all_mode(df, conf=args.c):
+    return confidence_threshold(df)
 
 if __name__ == '__main__':
-    focus, ignore = make_selection(df, "one_in_all", members)
-    print(focus)
-    print(ignore)
+    if mode == "one_in_all":
+        focus, ignore = one_in_all_mode(df, members)
+        print(focus)
+        print(ignore)
+    elif mode == "arbitrary":
+        dfs = arbitrary_mode(df, members)
+        print(dfs)
+    else:
+        df = all_mode(df)
+        print(df)
