@@ -88,26 +88,33 @@ def members_text(members):
     return members, text
 
 # Handle save logic
-def handle_save(df, fn_rec):
-    save = input("Would you like to save the dataset {fn_rec}? (y/n)")
+def handle_save(df, piece, fn_rec):
+    fn = args.d + fn_rec + f"_{piece}.csv"
+    save = input(f"Would you like to save {fn}? (y/n) ")
 
     if save == 'y':
-        if args.v: print(f"Saving to {args.d+fn_rec}")
-        #df.to_csv(args.d+fn_rec)
-    else:
+        if args.v: print(f"Saving to {fn}")
+        df.to_csv(fn)
+    elif save == 'n':
         change = input("Please enter a different name, or 'q' to exit: ")
         if change == 'q':
             exit()
         else:
             if args.v: print(f"Saving to {args.d+fn_rec}")
-            #df.to_csv(args.d+change)
+            df.to_csv(gs.d+change)
+    else:
+        print("I have no clue what you want from me. Bye.")
+        exit()
 
 # Generate dataset of the form "maple or not"
 # TODO: balance output dataset(?)
 def one_in_all_mode(df, members, conf=args.c):
     members, text = members_text(members)
     print(text)
-    selection = input("Enter the number of the member to single out: ")
+    selection = input("Enter the number of the member to single out, or 'q' to quit: ")
+    if selection == 'q':
+        exit()
+
     print(f"Singling out {members[int(selection)]}")
 
     focus = df[df[level] == members[int(selection)]]
@@ -117,10 +124,14 @@ def one_in_all_mode(df, members, conf=args.c):
     focus = confidence_threshold(focus)
     ignore = confidence_threshold(ignore)
 
-    name_rec = f"{members[int(selection)]}_in_all-{args.c}_conf.csv"
-    print(name_rec)
+    name_rec_base = f"{members[int(selection)]}_in_all-{args.c}_conf"
+
+    # Prepare a single merged DataFrame that will be split into train and test sets
     merged_df = pd.concat([focus, ignore])
     merged_train, merged_test = train_test_split(merged_df, test_size=0.2)
+    handle_save(merged_train, "train", name_rec_base)
+    handle_save(merged_test, "test", name_rec_base)
+
     return merged_train, merged_test
 
 # Generate dataset of the form "maple, elm, pine, ..."
@@ -128,7 +139,10 @@ def arbitrary_mode(df, members, conf=args.c):
     members, text = members_text(members)
     print(text)
     print("Enter the selection you want to keep, separated by commas.")
-    selection = input("e.g 14, 9, 17\n ")
+    selection = input("e.g 14, 9, 17, or 'q' to quit.\n ")
+
+    if selection == 'q':
+        exit()
 
     train_dfs = []
     test_dfs = []
@@ -143,11 +157,17 @@ def arbitrary_mode(df, members, conf=args.c):
         ueg_member = confidence_threshold(ueg_member)
         ueg_train, ueg_test = train_test_split(ueg_member, test_size=0.2)
         train_dfs.append(ueg_train)
-        test_dfs.append(ueg_train)
+        test_dfs.append(ueg_test)
 
-    name_rec = f"{'+'.join(names)}-{args.c}_conf.csv"
-    print(name_rec)
-    return dfs
+    name_rec_base = f"{'+'.join(names)}-{args.c}"
+
+    # Merge all train and test members into individual DataFrames
+    train_df = pd.concat(train_dfs)
+    test_df = pd.concat(test_dfs)
+
+    handle_save(train_df, "train", name_rec_base)
+    handle_save(test_df, "test", name_rec_base)
+    return train_df, test_df
 
 # Split the dataset by confidence threshold
 def all_mode(df, conf=args.c):
@@ -159,12 +179,11 @@ def all_mode(df, conf=args.c):
 if __name__ == '__main__':
     if mode == "one_in_all":
         train, test = one_in_all_mode(df, members)
-        if args.v:
-            print(train)
-            print(test)
     elif mode == "arbitrary":
-        dfs = arbitrary_mode(df, members)
-        if args.v: print(dfs)
+        train, test = arbitrary_mode(df, members)
     else:
-        df = all_mode(df)
-        if args.v: print(df)
+        train, test = all_mode(df)
+
+    if args.v:
+        print(train)
+        print(test)
