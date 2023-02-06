@@ -71,7 +71,7 @@ def confidence_threshold(df, thresh=args.c, below=args.b):
     else:
         return df[df['confidence'] >= thresh]
 
-def make_selection(df, mode, members, frac=args.c):
+def make_selection(df, mode, members, conf=args.c):
     members = sorted(list(members))
     text = ""
     for i in range(len(members)):
@@ -80,8 +80,15 @@ def make_selection(df, mode, members, frac=args.c):
     # Of the type "maple or not"
     if mode == "one_in_all":
         print(text)
-        selection = input("Enter the number to single out: ")
+        selection = input("Enter the number of the member to single out: ")
         print(f"Singling out {members[int(selection)]}")
+
+        focus = df[df[level] == members[int(selection)]]
+        ignore = df[df[level] != members[int(selection)]]
+
+        focus = confidence_threshold(focus)
+        ignore = confidence_threshold(ignore)
+        return focus, ignore
 
     # Of the type "maple, beech, elm, and ..."
     if mode == "selection":
@@ -99,9 +106,12 @@ def make_selection(df, mode, members, frac=args.c):
             ueg_member = confidence_threshold(ueg_member)
             dfs.append(ueg_member)
 
-        print(dfs)
+        return dfs
 
     if mode == "all":
         print("All members selected")
 
-make_selection(df, "selection", members)
+if __name__ == '__main__':
+    focus, ignore = make_selection(df, "one_in_all", members)
+    print(focus)
+    print(ignore)
