@@ -187,13 +187,16 @@ def all_mode(df, conf=args.c):
     return confidence_threshold(train), confidence_threshold(test)
 
 if __name__ == '__main__':
-    if mode == "one_in_all":
-        train, test = one_in_all_mode(df, members)
-    elif mode == "arbitrary":
-        train, test = arbitrary_mode(df, members)
-    else:
-        train, test = all_mode(df)
+    another = 'y'
+    while another == 'y':
+        another = input("Would you to select another? (y/n)")
+        if mode == "one_in_all":
+            train, test = one_in_all_mode(df, members)
+        elif mode == "arbitrary":
+            train, test = arbitrary_mode(df, members)
+        else:
+            train, test = all_mode(df)
 
-    if args.v:
-        print(train)
-        print(test)
+        if args.v:
+            print(train)
+            print(test)
