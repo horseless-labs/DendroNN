@@ -149,7 +149,7 @@ def arbitrary_mode(df, members, conf=args.c):
     members, text = members_text(members)
     print(text)
     print("Enter the selection you want to keep, separated by commas.")
-    selection = input("e.g 14, 9, 17, or 'q' to quit.\n ")
+    selection = input("e.g 2, 4, 12, 14, 18, 20, or 'q' to quit.\n ")
 
     if selection == 'q':
         exit()
@@ -175,10 +175,8 @@ def arbitrary_mode(df, members, conf=args.c):
 
     print(sizes)
     smallest_length = min(sizes)
-    for member in train_dfs:
-        print(f"Length before is {len(member)}")
-        member = member.sample(n=smallest_length)
-        print(f"Length after is {len(member)}")
+    for i in range(len(train_dfs)):
+        train_dfs[i] = train_dfs[i].sample(n=smallest_length)
 
     # Merge all train and test members into individual DataFrames
     train_df = pd.concat(train_dfs)

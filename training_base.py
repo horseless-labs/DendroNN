@@ -31,15 +31,16 @@ SIZE = 224
 FRAC = 1.0
 level = "common_name"
 
-dataset_dir = "dataset0/"
-csv_base = "bur_oak+chestnut_oak+northern_red_oak+pin_oak+swamp_white_oak+white_oak-0.99"
+dataset_dir = "dataset/"
+#csv_base = "bur_oak+chestnut_oak+northern_red_oak+pin_oak+swamp_white_oak+white_oak-0.99"
 #csv_base = "bur_oak+pin_oak-0.99"
+csv_base = "balanced_oaks"
 train_file = dataset_dir + f"{csv_base}_train.csv"
 test_file = dataset_dir + f"{csv_base}_test.csv"
 
 # 6-class oak
-model_weights = "loss0.3543_epoch12.bin"
-model_name = "deit_tiny_patch16_224"
+model_weights = ""
+model_name = "deit_base_patch16_224"
 
 # Binary
 #model_weights = "deit_tiny-bur_oak+pin_oak-12_epochs-99.2_auroc.bin"
@@ -66,7 +67,7 @@ for fold, (_, val_) in enumerate(skf.split(X=train_df, y=train_df.factor)):
 
 # Fixing errors in the dataset
 # Remove when the dataset is finalized
-train_df["path"] = train_df["path"].str.replace("dataset0/dataset0/", "dataset0/")
+train_df["path"] = train_df["path"].str.replace("dataset/dataset0/", "dataset/")
 #print(train_df)
 
 if FRAC < 1.0:
