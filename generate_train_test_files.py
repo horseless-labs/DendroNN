@@ -195,10 +195,13 @@ def arbitrary_mode(df, members, conf=args.c):
 
 # Split the dataset by confidence threshold
 def all_mode(df, conf=args.c):
-    name_rec = f"all-{conf}_conf.csv"
+    name_rec_base = f"all-{conf}_conf"
     train, test = train_test_split(df, test_size=0.2)
     # TODO: experiment to see if test data should be passed through the threshold
-    return confidence_threshold(train), confidence_threshold(test)
+    train_df, test_df = confidence_threshold(train), confidence_threshold(test)
+    handle_save(train_df, "train", name_rec_base)
+    handle_save(test_df, "test", name_rec_base)
+    return train, test
 
 if __name__ == '__main__':
     another = 'y'
