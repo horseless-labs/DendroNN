@@ -22,24 +22,38 @@ from collections import defaultdict
 
 import os, copy, time, gc
 
+import argparse
+
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-EPOCHS = 20
-BATCH_SIZE = 8
-SIZE = 224
-FRAC = 1.0
-level = "common_name"
+parser = argparse.ArgumentParser()
+parser.add_argument('-b', default=8, help="Batch size")
+parser.add_argument("-c", help="Base name of train and test CSV files")
+parser.add_argument("-d", action="store_true", help="Developer mode")
+parser.add_argument("-e", default=20, help="Number of epochs")
+parser.add_argument("-f", default=1.0, help="Fraction of available data to train and test with.")
+parser.add_argument("-l", default="common_name", help="Level of specimen's organization, e.g. family, common_name")
+parser.add_argument("-m", default="deit_base_patch16_224", help="Name of timm model to load")
+parser.add_argument("-s", default=224, help="Size to scale image down to")
+parser.add_argument("-w", default="", help="Path to weights file")
+args = parser.parse_args()
+
+EPOCHS = args.e
+BATCH_SIZE = args.b
+SIZE = args.s
+FRAC = args.f
+level = args.l
 
 dataset_dir = "dataset/"
 #csv_base = "bur_oak+chestnut_oak+northern_red_oak+pin_oak+swamp_white_oak+white_oak-0.99"
 #csv_base = "bur_oak+pin_oak-0.99"
-csv_base = "balanced_oaks"
+csv_base = args.c
 train_file = dataset_dir + f"{csv_base}_train.csv"
 test_file = dataset_dir + f"{csv_base}_test.csv"
 
 # 6-class oak
-model_weights = ""
+model_weights = args.w
 model_name = "deit_base_patch16_224"
 
 # Binary
@@ -68,7 +82,7 @@ for fold, (_, val_) in enumerate(skf.split(X=train_df, y=train_df.factor)):
 # Fixing errors in the dataset
 # Remove when the dataset is finalized
 train_df["path"] = train_df["path"].str.replace("dataset/dataset0/", "dataset/")
-#print(train_df)
+test_df["path"] = test_df["path"].str.replace("dataset0/", "dataset/")
 
 if FRAC < 1.0:
     train_df = train.sample(frac=FRAC)

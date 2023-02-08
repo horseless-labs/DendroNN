@@ -24,6 +24,10 @@ parser.add_argument('-d', default="dataset/", help="Destination directory to sav
 parser.add_argument('-l', default=0, help="Level of organization to return (0 for species, 1 for family ")
 parser.add_argument('-m', default=0, help="Selection mode. 0 for one-in-all (e.g. binary), 1 for arbitrary selection, 2 for all (just returns on confidence threshold")
 parser.add_argument('-s', default="specimen_list.csv", help="CSV file connecting specimen ID numbers to identifying information")
+
+# Currently just sets to 5000
+# TODO: refine mechanism for this
+parser.add_argument('-u', action="store_true", help="Upsample smaller classes instead of downsampling larger ones")
 parser.add_argument('-v', action="store_true", help="Verbose")
 args = parser.parse_args()
 
@@ -173,10 +177,13 @@ def arbitrary_mode(df, members, conf=args.c):
 
     name_rec_base = f"{'+'.join(names)}-{args.c}"
 
-    print(sizes)
-    smallest_length = min(sizes)
+    sample_size = min(sizes)
+    if args.u:
+        sample_size = 5000
+
     for i in range(len(train_dfs)):
-        train_dfs[i] = train_dfs[i].sample(n=smallest_length)
+        #train_dfs[i] = train_dfs[i].sample(n=smallest_length)
+        train_dfs[i] = train_dfs[i].sample(n=sample_size, replace=True)
 
     # Merge all train and test members into individual DataFrames
     train_df = pd.concat(train_dfs)
