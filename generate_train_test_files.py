@@ -101,7 +101,7 @@ def handle_save(df, piece, fn_rec):
             exit()
         else:
             if args.v: print(f"Saving to {args.d+fn_rec}")
-            df.to_csv(gs.d+change)
+            df.to_csv(args.d+change)
     else:
         print("I have no clue what you want from me. Bye.")
         exit()
@@ -160,16 +160,25 @@ def arbitrary_mode(df, members, conf=args.c):
     selection = selection.split(', ')
     selection = [int(i) for i in selection]
     names = []
+    sizes = []
     for i in selection:
         print(f"Keeping {members[i]}")
         names.append(members[i])
         ueg_member = df[df[level] == members[i]]
         ueg_member = confidence_threshold(ueg_member)
         ueg_train, ueg_test = train_test_split(ueg_member, test_size=0.2)
+        sizes.append(len(ueg_train))
         train_dfs.append(ueg_train)
         test_dfs.append(ueg_test)
 
     name_rec_base = f"{'+'.join(names)}-{args.c}"
+
+    print(sizes)
+    smallest_length = min(sizes)
+    for member in train_dfs:
+        print(f"Length before is {len(member)}")
+        member = member.sample(n=smallest_length)
+        print(f"Length after is {len(member)}")
 
     # Merge all train and test members into individual DataFrames
     train_df = pd.concat(train_dfs)
@@ -189,7 +198,6 @@ def all_mode(df, conf=args.c):
 if __name__ == '__main__':
     another = 'y'
     while another == 'y':
-        another = input("Would you to select another? (y/n)")
         if mode == "one_in_all":
             train, test = one_in_all_mode(df, members)
         elif mode == "arbitrary":
@@ -197,6 +205,7 @@ if __name__ == '__main__':
         else:
             train, test = all_mode(df)
 
+        another = input("Would you to select another? (y/n)")
         if args.v:
             print(train)
             print(test)
