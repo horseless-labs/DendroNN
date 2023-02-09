@@ -45,7 +45,7 @@ args = parser.parse_args()
 EPOCHS = args.e
 BATCH_SIZE = args.b
 SIZE = args.s
-FRAC = args.f
+FRAC = float(args.f)
 level = args.l
 
 dataset_dir = "dataset/"
@@ -88,7 +88,7 @@ train_df["path"] = train_df["path"].str.replace("dataset/dataset0/", "dataset/")
 test_df["path"] = test_df["path"].str.replace("dataset0/", "dataset/")
 
 if FRAC < 1.0:
-    train_df = train.sample(frac=FRAC)
+    train_df = train_df.sample(frac=FRAC)
 
 N_CLASSES = len(train_df["factor"].unique())
 
@@ -286,6 +286,7 @@ def training(model, optimizer, criterion, scheduler, device, num_epochs):
     best_model_weights = copy.deepcopy(model.state_dict())
     best_epoch_loss = 1000000
     history = defaultdict(list)
+    model_fns = []
 
     train_loader, valid_loader = get_dataloaders(train_df, fold=0)
 
@@ -298,7 +299,6 @@ def training(model, optimizer, criterion, scheduler, device, num_epochs):
 
         history["Train Loss"].append(train_epoch_loss)
         history["Valid Loss"].append(val_epoch_loss)
-        model_fns = []
         
         if val_epoch_loss <= best_epoch_loss:
             print(f"New best validation: {val_epoch_loss}")
@@ -326,7 +326,7 @@ def training(model, optimizer, criterion, scheduler, device, num_epochs):
 if __name__ == '__main__':
     # Reduce size of dataset for developer mode
     if args.d:
-        EPOCHS = 1
+        EPOCHS = 2
         train_df = train_df.sample(frac=0.001)
         test_df = test_df.sample(frac=0.1)
 
@@ -350,7 +350,8 @@ if __name__ == '__main__':
     roc, conf_matrix, classes = testing(test_df, model)
 
     # Get the actual number of trained epochs in the last model with improvement
-    log_text = "*" * 32
+    log_text = "\n"
+    log_text += "*" * 32
     if not args.test_only:
         log_text += f"\nTraining session started on {start_time}\n"
         # Get the actual number of trained epochs in the last model with improvement
@@ -375,7 +376,12 @@ if __name__ == '__main__':
     log_text += f"Mean ROC: {roc}, or by class: \n\n"
 
     for class_roc in classes:
-        log_text += f"{class_roc}: {classes[class_roc]}\n"
+        cls = f"{class_roc}"
+        roc = f"{classes[class_roc]:.3f}"
+        dots = "." * (45 - len(cls) - len(roc))
+        
+        log_text += cls + dots + roc + "\n"
+        #log_text += f"{class_roc}: {classes[class_roc]:.3f}\n"
     log_text += "\n"
 
     if args.v: print(log_text)
