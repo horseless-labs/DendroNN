@@ -54,7 +54,7 @@ test_file = dataset_dir + f"{csv_base}_test.csv"
 
 # 6-class oak
 model_weights = args.w
-model_name = "deit_base_patch16_224"
+model_name = args.m
 
 # Binary
 #model_weights = "deit_tiny-bur_oak+pin_oak-12_epochs-99.2_auroc.bin"
@@ -187,13 +187,6 @@ def testing(test_df, model):
     count = 0
     for image_path in tqdm(image_paths):
         with open(image_path, 'rb') as f:
-            """
-            if count%100==0:
-                print(f"{(count/len(image_paths))*100:.2f}% complete.")
-            if count+1 == len(image_paths):
-                print("Finished test.")
-            """
-
             image_bytes = f.read()
             conf, y_pre = single_prediction(image_bytes=image_bytes, model=model)
             confs.append(conf)
@@ -205,11 +198,17 @@ def testing(test_df, model):
         targets.append(factor_to_index[i])
 
     scores = multiclass_roc(targets, preds)
-    scores = list(scores.values())
-    mean_score = np.sum(scores)/len(scores)
+    rocs = list(scores.values())
+
+    classes = list(scores.keys())
+    print(scores)
+    print(classes)
+    classes = {index_to_factor[i]: scores[i] for i in range(len(classes))}
+
+    mean_roc = np.sum(rocs)/len(rocs)
 
     matrix = confusion_matrix(targets, preds)
-    return mean_score, matrix
+    return mean_roc, matrix, classes
 
 def train_epoch(model, optimizer, criterion, scheduler, dataloader, device, epoch):
     model.train()
@@ -314,7 +313,7 @@ def training(model, optimizer, criterion, scheduler, device, num_epochs):
 
 if __name__ == '__main__':
     #train_df = train_df.sample(frac=0.01)
-    #test_df = test_df.sample(frac=0.01)
+    test_df = test_df.sample(frac=0.1)
 
     model = timm.create_model(model_name, pretrained=True, num_classes=N_CLASSES)
     if model_weights != "":
@@ -326,8 +325,11 @@ if __name__ == '__main__':
 
     scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=100, T_mult=1,
                                                         eta_min=0.00001, last_epoch=-1)
-    model, history = training(model, optimizer, criterion, scheduler, device=device, num_epochs=EPOCHS)
-    roc, conf_matrix = testing(test_df, model)
+    #model, history = training(model, optimizer, criterion, scheduler, device=device, num_epochs=EPOCHS)
+    roc, conf_matrix, classes = testing(test_df, model)
     print(f"The mean ROC score is: {roc}")
     print("The confusion matrix is as follows:")
     print(conf_matrix)
+
+    for class_roc in classes:
+        print(f"{class_roc}: {classes[class_roc]}")
