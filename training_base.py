@@ -20,7 +20,7 @@ import io
 
 from collections import defaultdict
 
-import os, copy, time, gc
+import os, copy, time, gc, re
 
 import argparse
 
@@ -36,7 +36,10 @@ parser.add_argument("-f", default=1.0, help="Fraction of available data to train
 parser.add_argument("-l", default="common_name", help="Level of specimen's organization, e.g. family, common_name")
 parser.add_argument("-m", default="deit_base_patch16_224", help="Name of timm model to load")
 parser.add_argument("-s", default=224, help="Size to scale image down to")
+parser.add_argument("-v", action="store_true", help="Verbose")
 parser.add_argument("-w", default="", help="Path to weights file")
+parser.add_argument("--test_only", action="store_true", help="Does not train the model.")
+parser.add_argument("--log", action="store_true", help="Enables logging mode")
 args = parser.parse_args()
 
 EPOCHS = args.e
@@ -271,6 +274,13 @@ def validate_epoch(model, dataloader, criterion, device, epoch):
     gc.collect()
     return epoch_loss
 
+def time_elapsed(start, end):
+    elapsed = end - start
+    elapsed_str = "{:.0f}h {:.0f}m {:.0f}s".format(elapsed // 3600,
+                                (elapsed % 3600) // 60, (elapsed % 3600) % 60)
+    return elapsed_str
+
+
 def training(model, optimizer, criterion, scheduler, device, num_epochs):
     start = time.time()
     best_model_weights = copy.deepcopy(model.state_dict())
@@ -288,48 +298,88 @@ def training(model, optimizer, criterion, scheduler, device, num_epochs):
 
         history["Train Loss"].append(train_epoch_loss)
         history["Valid Loss"].append(val_epoch_loss)
+        model_fns = []
         
         if val_epoch_loss <= best_epoch_loss:
             print(f"New best validation: {val_epoch_loss}")
             best_epoch_loss = val_epoch_loss
             best_model_weights = copy.deepcopy(model.state_dict())
+
             PATH = "loss{:.4f}_epoch{:.0f}.bin".format(best_epoch_loss, epoch)
             torch.save(model.state_dict(), PATH)
+            model_fns.append(PATH)
+
             epochs_since_improvement = 0
             print("Model saved")
         else:
             epochs_since_improvement += 1
         print()
         end = time.time()
-        time_elapsed = end - start
-        print("Training complete in {:.0f}h {:.0f}m {:.0f}s".format(time_elapsed // 3600,
-                                (time_elapsed % 3600) // 60, (time_elapsed % 3600) % 60))
+        print(f"Training complete in {time_elapsed(start, end)}")
         print("Best loss: {:.4f}".format(best_epoch_loss))
         model.load_state_dict(best_model_weights)
         if epochs_since_improvement == 5:
             print("Stopping early due to poor improvement. Goodbye.")
             break
-    return model, history
+    return model, history, model_fns
 
 if __name__ == '__main__':
-    #train_df = train_df.sample(frac=0.01)
-    test_df = test_df.sample(frac=0.1)
+    # Reduce size of dataset for developer mode
+    if args.d:
+        EPOCHS = 1
+        train_df = train_df.sample(frac=0.001)
+        test_df = test_df.sample(frac=0.1)
 
     model = timm.create_model(model_name, pretrained=True, num_classes=N_CLASSES)
     if model_weights != "":
         model.load_state_dict(torch.load(model_weights))
     model.to(device)
 
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-
-    scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=100, T_mult=1,
+    
+    start_time = time.ctime()
+    start = time.time()
+    if not args.test_only:
+        criterion = nn.CrossEntropyLoss()
+        optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+        scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=100, T_mult=1,
                                                         eta_min=0.00001, last_epoch=-1)
-    #model, history = training(model, optimizer, criterion, scheduler, device=device, num_epochs=EPOCHS)
+        model, history, model_fns = training(model, optimizer, criterion, scheduler, device=device, num_epochs=EPOCHS)
+    stop = time.time()
+    elapsed_time = time_elapsed(start, stop)
+
     roc, conf_matrix, classes = testing(test_df, model)
-    print(f"The mean ROC score is: {roc}")
-    print("The confusion matrix is as follows:")
-    print(conf_matrix)
+
+    # Get the actual number of trained epochs in the last model with improvement
+    log_text = "*" * 32
+    if not args.test_only:
+        log_text += f"\nTraining session started on {start_time}\n"
+        # Get the actual number of trained epochs in the last model with improvement
+        epoch = model_fns[-1]
+        epoch = epoch.split('_')[1]
+        epoch = int(re.findall("\d+", epoch)[0])
+
+        log_text += f"Model: {args.m}"
+        if model_weights != "":
+            log_text += f" using weights {model_weights}\n"
+        else:
+            log_text += ", starting with just timm weights"
+
+        log_text += f"CSV base: {args.c}, \n{args.f*100}% at the {args.l} level of organization\n"
+        log_text += f"{EPOCHS} epochs attempted, {epoch} run\n"
+        log_text += f"This training session generated new weights at: {model_fns[-1]}\n"
+
+    log_text += f"\nTesting session started on {time.ctime()}\n"
+    if args.test_only:
+        log_text += f"Model: {args.m} using weights {model_weights}\n"
+    log_text += f"The confusion matrix is as follows:\n\n{conf_matrix}\n\n"
+    log_text += f"Mean ROC: {roc}, or by class: \n\n"
 
     for class_roc in classes:
-        print(f"{class_roc}: {classes[class_roc]}")
+        log_text += f"{class_roc}: {classes[class_roc]}\n"
+    log_text += "\n"
+
+    if args.v: print(log_text)
+    if args.log:
+        with open('log.txt', 'a+') as f:
+            f.write(log_text)
+        print("Logged")
