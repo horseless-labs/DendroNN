@@ -11,9 +11,13 @@ import os
 import argparse
 
 parser = argparse.ArgumentParser()
-# Required arguments
-parser.add_argument("--src", required=True, help="Source file or directory")
-parser.add_argument("--dest", required=True, help="Destination directory")
+"""
+These were originally meant to be required arguments. Disabling the "required" flag to make the
+script usable to another script.
+"""
+# TODO: install handling of these to make them required later.
+parser.add_argument("--src", help="Source file or directory")
+parser.add_argument("--dest", help="Destination directory")
 
 # Optional arguments
 parser.add_argument("-c", action="store_true", help="Compress the output directory")
@@ -24,6 +28,18 @@ parser.add_argument("-s", type=int, default=250,
 parser.add_argument("-v", action="store_true", help="Verbose")
 args = parser.parse_args()
 
+# Save a patch dictionary of form {fn: image}
+def handle_save(patch_dict):
+    for fn, patch in zip(patch_dict.keys(), patch_dict.values()):
+        if os.path.exists(fn) == False or args.o:
+            if args.v: print(f"Writing file {fn}")
+            cv2.imwrite(fn, patch)
+        else:
+            print("File exists and overwrite is disabled. Skipping")
+            return
+ 
+    if args.c: shutil.make_archive(dest_dir, "zip", dest_dir)
+ 
 """
 Generate patches for a single image
 Currently assumes the image can be divided into an integer number of patches, i.e. an
@@ -33,7 +49,7 @@ An image of 1440x2560 will be reduced to a grid of 9x5 patches
 
 TODO: write algorithm for non-integer partitions.
 """
-def partition_image(image_path, dest_dir, width_cutoff, height_cutoff):
+def partition_image(image_path, dest_dir, width_cutoff, height_cutoff, save=True):
     if not os.path.exists(dest_dir):
         os.makedirs(dest_dir)
 
@@ -46,11 +62,14 @@ def partition_image(image_path, dest_dir, width_cutoff, height_cutoff):
         if args.v: print(f"{image_fn} is not an image. Skipping.")
         return
 
+    image_fn = image_fn.split('.')[0]
+
     img = cv2.imread(image_path)
 
     height = img.shape[0]
     width = img.shape[1]
 
+    patch_dict = {}
     for i in range(int(height/height_cutoff)):
         top_border = i * height_cutoff
         bottom_border = i * height_cutoff + height_cutoff
@@ -63,18 +82,14 @@ def partition_image(image_path, dest_dir, width_cutoff, height_cutoff):
             patch = cv2.rotate(patch, cv2.ROTATE_90_CLOCKWISE)
 
             # No idea why it just goes back and forth like this. Test it
-            image = cv2.rotate(patch, cv2.ROTATE_90_COUNTERCLOCKWISE)
+            patch = cv2.rotate(patch, cv2.ROTATE_90_COUNTERCLOCKWISE)
             fn = f"{dest_dir}/{image_fn}_{i}_{j}.jpg"
-            
-            if os.path.exists(fn) == False or args.o:
-                if args.v: print(f"Writing file {fn}")
-                cv2.imwrite(fn, image)
-            else:
-                print("File exists and overwrite is disabled. Skipping")
-                return
+            patch_dict[fn] = patch
 
-    # Make a ZIP archive
-    if args.c: shutil.make_archive(dest_dir, "zip", dest_dir)
+    if save:
+        handle_save(patch_dict)
+
+    return patch_dict
 
 # This part of the code is specific to the structure of this project.
 # Focused on a specimen numbering pattern with leading digits up to 9999.
@@ -107,8 +122,6 @@ def partition_directory(source_dir, dest_dir, width_cutoff, height_cutoff):
 
             # Make a ZIP archive if that option is selected
             if args.c: shutil.make_archive(dest, "zip", dest)
-    else:
-        print("Ignoring sub-directory {directory}")
 
 if __name__ == "__main__":
     if os.path.isfile(args.src):
