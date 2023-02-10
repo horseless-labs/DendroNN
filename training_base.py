@@ -42,9 +42,9 @@ parser.add_argument("--test_only", action="store_true", help="Does not train the
 parser.add_argument("--log", action="store_true", help="Enables logging mode")
 args = parser.parse_args()
 
-EPOCHS = args.e
-BATCH_SIZE = args.b
-SIZE = args.s
+EPOCHS = int(args.e)
+BATCH_SIZE = int(args.b)
+SIZE = int(args.s)
 FRAC = float(args.f)
 level = args.l
 
@@ -89,6 +89,7 @@ test_df["path"] = test_df["path"].str.replace("dataset0/", "dataset/")
 
 if FRAC < 1.0:
     train_df = train_df.sample(frac=FRAC)
+    test_df = test_df.sample(frac=FRAC)
 
 N_CLASSES = len(train_df["factor"].unique())
 
@@ -341,7 +342,7 @@ if __name__ == '__main__':
     if not args.test_only:
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-        scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=100, T_mult=1,
+        scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=1,
                                                         eta_min=0.00001, last_epoch=-1)
         model, history, model_fns = training(model, optimizer, criterion, scheduler, device=device, num_epochs=EPOCHS)
     stop = time.time()
@@ -363,9 +364,9 @@ if __name__ == '__main__':
         if model_weights != "":
             log_text += f" using weights {model_weights}\n"
         else:
-            log_text += ", starting with just timm weights"
+            log_text += ", starting with just timm weights\n"
 
-        log_text += f"CSV base: {args.c}, \n{args.f*100}% at the {args.l} level of organization\n"
+        log_text += f"CSV base: {args.c}, \n{FRAC*100}% at the {args.l} level of organization\n"
         log_text += f"{EPOCHS} epochs attempted, {epoch} run\n"
         log_text += f"This training session generated new weights at: {model_fns[-1]}\n"
 
