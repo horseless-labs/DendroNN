@@ -2,8 +2,9 @@
 # This is the code to fix it -.-
 
 import os
+from tqdm import tqdm
 
-path = 'dummy_dataset/'
+path = "dataset/pittsburgh_torso-250x250/"
 
 #print(os.listdir(path))
 
@@ -15,7 +16,6 @@ def cut_down(fn):
     return fn[0] + middle + '.' + fn[2]
 
 dirs = [path+i+'/' for i in os.listdir(path) if os.path.isdir(path+i)]
-for d in dirs:
+for d in tqdm(dirs):
     for image in os.listdir(d):
-        print(image)
         os.rename(d+image, d+cut_down(image))

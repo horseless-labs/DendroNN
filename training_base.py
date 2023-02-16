@@ -104,7 +104,7 @@ class BarkDataset(Dataset):
             transforms.Resize((SIZE, SIZE)),
             transforms.RandomHorizontalFlip(),
             transforms.RandomRotation(60),
-            transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5),
+            transforms.ColorJitter(brightness=0.25, contrast=0.5, saturation=0.5, hue=0.5),
             transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                 std=[0.229, 0.224, 0.225]),
             ])
@@ -341,9 +341,9 @@ if __name__ == '__main__':
     start = time.time()
     if not args.test_only:
         criterion = nn.CrossEntropyLoss()
-        optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+        optimizer = optim.SGD(model.parameters(), lr=0.002, momentum=0.9)
         scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=1,
-                                                        eta_min=0.00001, last_epoch=-1)
+                                                        eta_min=0.0000, last_epoch=-1)
         model, history, model_fns = training(model, optimizer, criterion, scheduler, device=device, num_epochs=EPOCHS)
     stop = time.time()
     elapsed_time = time_elapsed(start, stop)

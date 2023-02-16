@@ -5,3 +5,6 @@ dataset/
 *.zip
 *.csv
 *.bin
+*ipynb*
+__pycache__/
+notebooks/

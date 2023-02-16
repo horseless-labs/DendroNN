@@ -13,7 +13,7 @@ import os, io, time
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-PATH = "dummy_dataset/"
+PATH = "dataset0/pittsburgh_torso-250x250/"
 N_CLASSES = 2
 specimens = os.listdir(PATH)
 

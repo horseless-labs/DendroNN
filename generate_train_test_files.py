@@ -12,12 +12,15 @@ user control over such arrangements.
 
 import pandas as pd
 import numpy as np
+
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+
 import os
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-a', default="torso_accept.csv", help="CSV file of accepted bark patches")
+parser.add_argument('-a', default="accept_torso_fixed.csv", help="CSV file of accepted bark patches")
 parser.add_argument('-b', default=False, help="Above threshold? Default False.")
 parser.add_argument('-c', default=0.99, help="Threshold of confidence, default of 99% (0.99)")
 parser.add_argument('-d', default="dataset/", help="Destination directory to save")
@@ -70,6 +73,10 @@ df = accept_df.copy()
 df["specimen"] = [i.split('/')[2] for i in df['path']]
 df["specimen"] = df["specimen"].str.lstrip('0')
 df[level] = [specimen_to_index[int(df.iloc[i].specimen)] for i in range(len(df))]
+
+# Provisionally bringing this code from training_base.py
+df["factor"] = pd.factorize(df[level])[0]
+
 if args.v: print(df.head())
 
 members = set(specimen_to_index.values())

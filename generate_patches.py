@@ -10,6 +10,8 @@ import shutil
 import os
 import argparse
 
+#if __name__ == '__main__':
+#    parser = argparse.ArgumentParser()
 parser = argparse.ArgumentParser()
 """
 These were originally meant to be required arguments. Disabling the "required" flag to make the
@@ -88,6 +90,28 @@ def partition_image(image_path, dest_dir, width_cutoff, height_cutoff, save=True
 
     if save:
         handle_save(patch_dict)
+
+    return patch_dict
+
+def partition_image_in_memory(image, width_cutoff, height_cutoff):
+    image = Image.fromarray(image, 'RGB')
+
+    height, width = image.shape[0], image.shape[1]
+
+    patch_dict = {}
+    for i in range(int(height/height_cutoff)):
+        top_border = i * height_cutoff
+        bottom_border = i * height_cutoff + height_cutoff
+
+        for j in range(int(width/width_cutoff)):
+            left_border = j * width_cutoff
+            right_border = j * width_cutoff + width_cutoff
+
+            patch = img[top_border:bottom_border, left_border:right_border]
+            patch = cv2.rotate(patch, cv2.ROTATE_90_CLOCKWISE)
+            patch = cv2.rotate(patch, cv2.ROTATE_90_COUNTERCLOCKWISE)
+            dict_key = f"{i}, {j}"
+            patch_dict[dict_key] = patch
 
     return patch_dict
 
